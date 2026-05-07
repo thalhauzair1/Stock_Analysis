@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 import state
 from api.routes import router
@@ -51,6 +51,10 @@ app.include_router(router)
 
 # ── Dashboard (static HTML) ───────────────────────────────────────────────────
 _DASHBOARD = Path("dashboard") / "index.html"
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/dashboard")
 
 @app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 def dashboard():

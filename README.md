@@ -61,12 +61,18 @@ Every hour the system fetches market data for ~35 liquid stocks and runs them th
 **1. Clone and install**
 
 ```bash
-git clone https://github.com/your-username/stock-intelligence.git
-cd stock-intelligence
+git clone https://github.com/thalhauzair1/Stock_Analysis.git
+cd Stock_Analysis
 pip install -r requirements.txt
 ```
 
 **2. Create a `.env` file**
+
+Copy `.env.example` to `.env` and fill in your keys:
+
+```bash
+cp .env.example .env
+```
 
 ```env
 # All keys are optional — the system runs without any of them
@@ -93,7 +99,7 @@ RUN_INTERVAL_HOURS=1
 python main.py
 ```
 
-Open **http://localhost:8000** — the first analysis starts automatically. Click **▶ Run Now** to trigger one immediately.
+Open **http://localhost:8000** — it redirects to the dashboard automatically. The first analysis starts on launch. Click **▶ Run Now** to trigger one immediately.
 
 ---
 
