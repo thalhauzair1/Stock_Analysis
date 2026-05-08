@@ -504,6 +504,68 @@ def _fetch_current_prices(tickers: list[str]) -> dict[str, float | None]:
         return {t: None for t in tickers}
 
 
+# ── Portfolio value history ───────────────────────────────────────────────────
+
+@router.get("/portfolio/value-history", tags=["portfolio"])
+def portfolio_value_history(db: Session = Depends(get_db)):
+    """Daily portfolio value from earliest buy date to today."""
+    import math
+    import yfinance as yf
+
+    holdings = db.query(PortfolioHolding).all()
+    if not holdings:
+        return []
+
+    sells = db.query(PortfolioSell).all()
+    sells_by_holding: dict[int, list] = {}
+    for s in sells:
+        sells_by_holding.setdefault(s.holding_id, []).append(s)
+
+    buy_dates = [h.buy_date[:10] for h in holdings if h.buy_date]
+    if not buy_dates:
+        return []
+
+    start   = min(buy_dates)
+    tickers = list({h.ticker for h in holdings})
+
+    try:
+        raw   = yf.download(
+            tickers if len(tickers) > 1 else tickers[0],
+            start=start, progress=False, auto_adjust=True,
+        )
+        close = raw["Close"] if "Close" in raw else raw
+    except Exception as exc:
+        logger.warning(f"value-history download failed: {exc}")
+        return []
+
+    result = []
+    for date in close.index:
+        date_str     = str(date.date())
+        total_value  = 0.0
+        total_invest = 0.0
+
+        for h in holdings:
+            if not h.buy_date or h.buy_date[:10] > date_str:
+                continue
+            h_sells   = sells_by_holding.get(h.id, [])
+            sold      = sum(s.shares_sold for s in h_sells if s.sell_date and s.sell_date[:10] <= date_str)
+            remaining = max(h.shares - sold, 0)
+            if remaining <= 0:
+                continue
+            try:
+                price = float(close[h.ticker][date]) if len(tickers) > 1 else float(close[date])
+                if not math.isnan(price):
+                    total_value  += remaining * price
+                    total_invest += remaining * h.buy_price
+            except Exception:
+                continue
+
+        if total_value > 0:
+            result.append({"date": date_str, "value": round(total_value, 2), "invested": round(total_invest, 2)})
+
+    return result
+
+
 # ── Price prediction ──────────────────────────────────────────────────────
 
 @router.get("/predict/{ticker}", tags=["predictions"])
